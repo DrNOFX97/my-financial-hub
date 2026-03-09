@@ -1,11 +1,13 @@
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { monthlyData, categoryData, recentTransactions, upcomingPayments } from "@/data/mockData";
+import ReconciliationSuggestions from "@/components/ReconciliationSuggestions";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useMonthlyData, useCategoryData, useTransactions, useUpcomingPayments, useDashboardStats, useRecurringPatterns } from "@/hooks/useDashboard";
+import { useAuth } from "@/hooks/useAuth";
 
 const container = {
   hidden: {},
@@ -17,19 +19,67 @@ const item = {
 };
 
 const Index = () => {
+  const { spreadsheetId } = useAuth();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(spreadsheetId!);
+  const { data: monthlyData, isLoading: monthlyLoading } = useMonthlyData(spreadsheetId!);
+  const { data: categoryData, isLoading: categoryLoading } = useCategoryData(spreadsheetId!);
+  const { data: recentTransactions, isLoading: transactionsLoading } = useTransactions(spreadsheetId!, 6);
+  const { data: upcomingPayments, isLoading: paymentsLoading } = useUpcomingPayments(spreadsheetId!);
+  const { data: recurringPatterns, isLoading: patternsLoading } = useRecurringPatterns(spreadsheetId!);
+
+  const isLoading = statsLoading || monthlyLoading || categoryLoading || transactionsLoading || paymentsLoading || patternsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">A carregar dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-7xl mx-auto">
       <motion.div variants={item}>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground text-sm">Resumo financeiro de Março 2026</p>
+        <p className="text-muted-foreground text-sm">
+          Resumo financeiro de {new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" })}
+        </p>
+      </motion.div>
+
+      <motion.div variants={item}>
+        <ReconciliationSuggestions />
       </motion.div>
 
       {/* Stat Cards */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Saldo Atual" value="€4.230,50" change="+12% vs. mês anterior" changeType="positive" icon={Wallet} />
-        <StatCard title="Receitas (Mês)" value="€2.800,00" change="+€200 vs. fev" changeType="positive" icon={TrendingUp} />
-        <StatCard title="Despesas (Mês)" value="€1.245,24" change="-8% vs. fev" changeType="positive" icon={TrendingDown} />
-        <StatCard title="Poupança" value="€1.554,76" change="55% taxa poupança" changeType="positive" icon={PiggyBank} />
+        <StatCard
+          title="Saldo Atual"
+          value={`€${(stats as any)?.saldoAtual?.toFixed(2) || "0,00"}`}
+          change={`+${(stats as any)?.variacaoSaldo || 0}% vs. mês anterior`}
+          changeType="positive"
+          icon={Wallet}
+        />
+        <StatCard
+          title="Receitas (Mês)"
+          value={`€${(stats as any)?.receitasMes?.toFixed(2) || "0,00"}`}
+          change={`+€${(stats as any)?.variacaoReceitas || 0} vs. fev`}
+          changeType="positive"
+          icon={TrendingUp}
+        />
+        <StatCard
+          title="Despesas (Mês)"
+          value={`€${(stats as any)?.despesasMes?.toFixed(2) || "0,00"}`}
+          change={`-${(stats as any)?.variacaoDespesas || 0}% vs. fev`}
+          changeType="positive"
+          icon={TrendingDown}
+        />
+        <StatCard
+          title="Poupança"
+          value={`€${(stats as any)?.poupanca?.toFixed(2) || "0,00"}`}
+          change={`${(stats as any)?.taxaPoupanca || 0}% taxa poupança`}
+          changeType="positive"
+          icon={PiggyBank}
+        />
       </motion.div>
 
       {/* Charts Row */}
@@ -63,7 +113,7 @@ const Index = () => {
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie data={categoryData} dataKey="valor" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
-                {categoryData.map((entry, i) => (
+                {(categoryData as any)?.map((entry: any, i: number) => (
                   <Cell key={i} fill={entry.cor} />
                 ))}
               </Pie>
@@ -71,7 +121,7 @@ const Index = () => {
             </PieChart>
           </ResponsiveContainer>
           <div className="grid grid-cols-2 gap-1 mt-2">
-            {categoryData.map((cat) => (
+            {(categoryData as any)?.map((cat: any) => (
               <div key={cat.name} className="flex items-center gap-1.5 text-[11px]">
                 <div className="h-2 w-2 rounded-full shrink-0" style={{ background: cat.cor }} />
                 <span className="text-muted-foreground truncate">{cat.name}</span>
@@ -87,7 +137,7 @@ const Index = () => {
         <div className="glass-card rounded-xl p-5">
           <h3 className="text-sm font-semibold mb-4">Últimas Transações</h3>
           <div className="space-y-3">
-            {recentTransactions.slice(0, 6).map((tx) => (
+            {(recentTransactions as any)?.slice(0, 6).map((tx: any) => (
               <div key={tx.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={cn(
@@ -120,7 +170,7 @@ const Index = () => {
         <div className="glass-card rounded-xl p-5">
           <h3 className="text-sm font-semibold mb-4">Pagamentos Próximos</h3>
           <div className="space-y-3">
-            {upcomingPayments.map((p) => (
+            {(upcomingPayments as any)?.map((p: any) => (
               <div key={p.id} className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50">
                 <div className="min-w-0">
                   <p className="font-medium">{p.descricao}</p>
@@ -131,6 +181,41 @@ const Index = () => {
                 </span>
               </div>
             ))}
+            {(!upcomingPayments || (upcomingPayments as any).length === 0) && (
+              <p className="text-xs text-muted-foreground text-center py-4">Sem pagamentos próximos agendados.</p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Recurring Patterns Section */}
+      <motion.div variants={item}>
+        <div className="glass-card rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold">Padrões de Gastos Fixos Detectados</h3>
+            <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+              Motor Analítico
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(recurringPatterns as any)?.map((pattern: any, i: number) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-secondary/20 transition-all hover:bg-secondary/40">
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{pattern.descricao}</p>
+                  <p className="text-xs text-muted-foreground">{pattern.categoria} · {pattern.frequencia}x detetado</p>
+                </div>
+                <div className="text-right ml-4 shrink-0">
+                  <p className="font-bold text-sm">€{pattern.valorMedio.toFixed(2)}</p>
+                  <p className="text-[10px] text-muted-foreground">média/mês</p>
+                </div>
+              </div>
+            ))}
+            {(!recurringPatterns || (recurringPatterns as any).length === 0) && (
+              <div className="col-span-full py-8 text-center bg-secondary/10 rounded-lg border border-dashed border-border">
+                <p className="text-sm text-muted-foreground">Ainda não foram detectados padrões recorrentes suficientes.</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">O motor analítico precisa de pelo menos 2 meses de dados.</p>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>

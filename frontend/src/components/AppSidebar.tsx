@@ -9,9 +9,11 @@ import {
   TrendingUp,
   TrendingDown,
   CreditCard,
+  Upload,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarContent,
@@ -28,8 +30,9 @@ import {
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Upload", url: "/upload", icon: Upload },
   { title: "Faturas & Recibos", url: "/faturas", icon: Receipt },
-  { title: "Gastos Mensais", url: "/gastos-mensais", icon: Wallet },
+  { title: "Gastos", url: "/gastos-mensais", icon: Wallet },
   { title: "Extrato Bancário", url: "/extrato", icon: CreditCard },
 ];
 
@@ -85,6 +88,11 @@ function SidebarSection({
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { logout, name, email } = useAuth();
+
+  const initials = name
+    ? name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
+    : email?.[0]?.toUpperCase() ?? '?';
 
   return (
     <Sidebar collapsible="icon">
@@ -110,12 +118,29 @@ export function AppSidebar() {
         <SidebarSection label="Ferramentas" items={toolsItems} collapsed={collapsed} />
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
-        {!collapsed && (
-          <p className="text-[10px] text-sidebar-muted text-center">
-            v1.0 · FinGestão
-          </p>
-        )}
+      <SidebarFooter className="p-2 border-t border-sidebar-border space-y-1">
+        {/* User info */}
+        <div className={`flex items-center gap-3 px-2 py-2 rounded-md ${collapsed ? 'justify-center' : ''}`}>
+          <div className="h-8 w-8 rounded-full bg-sidebar-primary flex items-center justify-center shrink-0 text-sidebar-primary-foreground text-xs font-bold">
+            {initials}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{name || email?.split('@')[0]}</p>
+              <p className="text-[10px] text-sidebar-muted truncate">{email}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Logout */}
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={logout} className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+              <LogOut className="h-4 w-4 shrink-0" />
+              {!collapsed && <span>Sair</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
